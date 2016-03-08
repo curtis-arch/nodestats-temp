@@ -1,81 +1,121 @@
 
-# httpstats
----
-Record and report on HTTP stats via an HTTP API.
+## Add a record
 
-Read API docs [./doc/http-api.md](./doc/api.md)
+GET /requests/create
++ user, string, optional
++ project, string, optional
++ eventType, string, optional
++ event, string, optional
++ content, string, optional
++ metadata, string, optional
++ ip, string, optional, defaults from request
++ userAgent, string, optional, defaults from request
++ timestamp, number, optional, unix offset, defaults to now
++ callback, string, optional, jsonp callback parameter
 
-## Development setup
-It works best when running rethinkdb locally. Otherwise you can figure out how to make
-connect remotely.
-
-You'll need some environment variables for `APP_CONFIG` and `NODE_ENV`
-
-See the configuration here [./config/development.json](./config/development.json)
-
-Install the packages
-```sh
-npm install
+Sample response:
+```json
+{
+    "success": true,
+    "data": {
+        "deleted": 0,
+        "errors": 0,
+        "generated_keys": ["6540e7f2-bc73-46d9-a813-dfcb8f24d919"],
+        "inserted": 1,
+        "replaced": 0,
+        "skipped": 0,
+        "unchanged": 0
+    },
+    "error": null
+}
 ```
 
-Install gulp globally if you don't have it
-```sh
-npm install gulp -g
+The API will try to parse out any date. Just be aware it could have some limitations
+and you will achieve best results by passing it a preferred format.
+
+## Query for requests
+
+GET /requests
+Filters:
++ user, string, optional
++ project, string, optional
++ eventType, string, optional
++ event, string, optional
++ ip, string, optional
++ start, date, required, ISO 8601 format
++ end, date, required, ISO 8601 format
++ limit, number, optional
+
+Sample output:
+```json
+{
+    "success": true,
+    "error": null,
+    "data": [{
+        "content": "content0.9569159653037786",
+        "timestamp": 1423285070905,
+        "event": "event0.9540031442884356",
+        "eventType": "eventType0.7074686523992568",
+        "id": "0680c0f8-594b-418d-b237-ee5a3a95d46a",
+        "ip": "ip0.42774740792810917",
+        "metadata": "metadata0.1415706172119826",
+        "project": "project0.23264494352042675",
+        "user": "user0.3856971587520093",
+        "userAgent": "userAgent0.7797085801139474"
+    }, {
+        "content": "content0.20633318228647113",
+        "timestamp": 1423285070905,
+        "event": "event0.8371858799364418",
+        "eventType": "eventType0.9380447180010378",
+        "id": "09e65f94-53e0-46aa-b5c4-2db54dd51e4b",
+        "ip": "ip0.03233872936107218",
+        "metadata": "metadata0.2804808602668345",
+        "project": "",
+        "user": "user0.7853867907542735",
+        "userAgent": "userAgent0.06947706546634436"
+    }]
+}
 ```
 
-Run development tasks
-```sh
-# run all tasks and watch for changes
-gulp
-# ...or run individual tasks
-gulp jshint
-gulp test
-```
-It will run jshint and mocha.
+## Query for request daily report
 
-Test the HTTP API
-```sh
-./watch
-./test-http
-```
+GET /requests/daily
+** The filters are the same as /requests
 
-## Production setup
-Install the packages
-```sh
-npm install --production
+Sample output:
+```json
+{
+    "success": true,
+    "error": null,
+    "url":"/requests/daily?user=usertest&start=2015-02-22&end=2015-02-22"
+    "data": {
+        "total": 94,
+        "days": {
+            "2015-02-22": 90,
+        }
+    }
+}
 ```
 
-Install forever globally
-```sh
-npm install forever -g
+## Query for request hourly report
+
+GET /requests/hourly
+** The filters are the same as /requests
+
+Sample output:
+```json
+{
+    "success": true,
+    "data": {
+        "total": 0,
+        "hours": [
+            {
+                "time": "2015-02-23T00:00:00-07:00",
+                "reqs": 0
+            }
+        ]
+    },
+    "error": null,
+    "url": "/requests/hourly?user=usertest&start=2015-02-23&end=2015-02-23"
+}
 ```
-
-Create the SSH tunnel to compose.io
-```sh
-autossh -N -L 127.0.0.1:28015:10.12.32.2:28015 -p 10478 \
-    compose@aws-us-east-1-portal.0.dblayer.com \
-    -i ~/.ssh/id_rsa &
-```
-
-Start the server
-```sh
-export NODE_ENV=production
-export APP_CONFIG=/home/rethinkdbstats/rethinkdbstats/config/production.json
-
-forever stop "rethinkdbstats-node"
-
-forever start --uid "rethinkdbstats-node" \
-    -p /home/rethinkdbstats/.forever \
-    --sourceDir=/home/rethinkdbstats/rethinkdbstats \
-    --workingDir=/home/rethinkdbstats/rethinkdbstats \
-    --append \
-    -o /home/rethinkdbstats/logs/rethinkdbstats-node-out.log \
-    -l /home/rethinkdbstats/logs/rethinkdbstats-node-log.log \
-    -e /home/rethinkdbstats/logs/rethinkdbstats-node-err.log \
-    app.js
-```
-
-## Plugins
-+ [flatiron](http://flatironjs.org) express-compatible framework
-+ [rethinkdb](http://www.rethinkdb.com/api/javascript/) node driver
-+ [moment](http://momentjs.com)
